@@ -1,0 +1,3 @@
+[submodule "third_party/hakoniwa-godot"]
+	path = third_party/hakoniwa-godot
+	url = https://github.com/hakoniwalab/hakoniwa-godot.git

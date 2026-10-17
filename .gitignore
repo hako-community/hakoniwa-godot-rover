@@ -1,0 +1,8 @@
+# Godot のインポートキャッシュ（開いたとき / --headless --import で再生成）
+project/.godot/
+# hakoniwa-godot の addon は submodule / SDK から入れる生成物（scripts/windows/install_addons.ps1）
+project/addons/hakoniwa/
+project/addons/hakoniwa_msgs/
+project/addons/hakoniwa_robot_sync/
+# 各自の PC 用の場所の設定
+scripts/windows/config.local.ps1
