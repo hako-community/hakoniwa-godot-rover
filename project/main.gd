@@ -9,6 +9,8 @@ extends Node3D
 ##   --quit-after <秒>     自動で終了
 ##   --config <json>      設定（既定 res://config/rover_viewer.json）
 ##   --world-visual <json> 地形・岩の配置表（既定は設定の world_visual。run_sim.ps1 -World が渡す）
+##   --cam-top            真上から見る（操舵・車輪の向きの確認用）
+##   --dump-joints        2 秒ごとに、受信した操舵角と描いたノードの回転を並べてログに出す（関節の同期の確認用）
 ##   --terrain-check <csv> 検査点（x,y：FLU）の真上から地形にレイを当て、<csv>.godot.csv に x,y,z を書いて終了
 ##                         （hakoniwa-mujoco-rover の tools/check_terrain.py --godot で MuJoCo・DEM と比べる）
 
@@ -17,7 +19,8 @@ const ROVER_SYNC_PATH := "res://addons/hakoniwa_rover/scripts/rover_sync_control
 
 var cfg: Dictionary = {}
 var args := {"offline": false, "shot": "", "shot_after": 10.0, "quit_after": -1.0, "config": "res://config/rover_viewer.json",
-		"world_visual": "", "terrain_check": ""}
+		"world_visual": "", "terrain_check": "", "cam_top": false, "dump_joints": false}
+var dump_next := 2.0
 var terrain: Node3D
 var check_frames := 0
 var t0 := 0.0
@@ -89,6 +92,8 @@ func _parse_args() -> void:
 			"--config": i += 1; args["config"] = a[i]
 			"--world-visual": i += 1; args["world_visual"] = a[i]
 			"--terrain-check": i += 1; args["terrain_check"] = a[i]
+			"--cam-top": args["cam_top"] = true
+			"--dump-joints": args["dump_joints"] = true
 		i += 1
 
 
@@ -223,9 +228,35 @@ func _process(delta: float) -> void:
 	fwd.y = 0.0
 	fwd = fwd.normalized() if fwd.length() > 0.01 else Vector3.FORWARD
 	var left := Vector3.UP.cross(fwd).normalized()
-	var eye := p - fwd * 11.0 + left * 7.0 + Vector3.UP * 3.5
-	cam.global_position = cam.global_position.lerp(eye, clamp(delta * 3.0, 0.0, 1.0)) if Engine.get_frames_drawn() > 2 else eye
-	cam.look_at(p + Vector3.UP * 0.8, Vector3.UP)
+	if args["cam_top"]:
+		# 真上から（操舵・車輪の向きの確認用）。画面の上 = ローバの前
+		cam.global_position = p + Vector3.UP * 16.0
+		cam.look_at(p, fwd)
+	else:
+		var eye := p - fwd * 11.0 + left * 7.0 + Vector3.UP * 3.5
+		cam.global_position = cam.global_position.lerp(eye, clamp(delta * 3.0, 0.0, 1.0)) if Engine.get_frames_drawn() > 2 else eye
+		cam.look_at(p + Vector3.UP * 0.8, Vector3.UP)
+	_update_hud_and_shot(delta, p)
+
+
+func _dump_joints() -> void:
+	if sync == null or sync.last_joint_states.is_empty():
+		return
+	var js: Dictionary = sync.last_joint_states
+	var names: Array = js.get("name", [])
+	var pos: Array = js.get("position", [])
+	var parts := []
+	for i in range(min(names.size(), pos.size())):
+		var nm := str(names[i])
+		if nm.begins_with("steer_"):
+			parts.append("%s recv=%+.1f drawn=%+.1f" % [nm, rad_to_deg(float(pos[i])), sync.rendered_joint_deg(nm)])
+	print("[rover_viewer] joints: " + "  ".join(parts))
+
+
+func _update_hud_and_shot(delta: float, p: Vector3) -> void:
+	if args["dump_joints"] and hako_sim != null and hako_sim.get_simtime_usec() / 1e6 > dump_next:
+		dump_next += 2.0
+		_dump_joints()
 	if delta > 0.0:
 		speed = lerp(speed, (p - prev_pos).length() / delta, 0.1)
 	prev_pos = p

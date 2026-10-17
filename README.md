@@ -36,7 +36,9 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\install_addons.ps1
 - GLB・コースの配置表・質量表は **hakoniwa-mujoco-rover から実行時に読む**（このリポジトリには入れない）。場所は `project/config/rover_viewer.json`。
 - 引数：`--offline`（箱庭なし）、`--shot <png> --shot-after <秒>`（画面を保存）、`--quit-after <秒>`、
   `--world-visual <json>`（地形の配置表。hakoniwa-mujoco-rover の `run_sim.ps1 -World` が渡す）、
-  `--terrain-check <csv>`（検査点に真上からレイを当てて高さを書き出す。mujoco-rover の `tools/check_terrain.py --godot` で物理・DEM と比べる）。
+  `--terrain-check <csv>`（検査点に真上からレイを当てて高さを書き出す。mujoco-rover の `tools/check_terrain.py --godot` で物理・DEM と比べる）、
+  `--cam-top`（真上から見る）、`--dump-joints`（受信した操舵角と描いた向きを 2 秒ごとにログへ。関節の同期の確認用）。
+  mujoco-rover の `run_sim.ps1 -GodotArgs "--dump-joints"` で渡せる。
 
 ## 構成
 
