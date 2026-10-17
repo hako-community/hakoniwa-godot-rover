@@ -48,4 +48,4 @@ scripts/windows/                   addon を入れるスクリプト・起動ス
 
 ## ライセンス
 
-未定。submodule の hakoniwa-godot は MIT。
+[MIT License](./LICENSE)（Copyright (c) 2026 Hakoniwa Community）。submodule の hakoniwa-godot も MIT です。
