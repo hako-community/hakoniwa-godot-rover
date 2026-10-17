@@ -8,12 +8,18 @@ extends Node3D
 ##   --shot <png>         画面を保存（--shot-after 秒後）
 ##   --quit-after <秒>     自動で終了
 ##   --config <json>      設定（既定 res://config/rover_viewer.json）
+##   --world-visual <json> 地形・岩の配置表（既定は設定の world_visual。run_sim.ps1 -World が渡す）
+##   --terrain-check <csv> 検査点（x,y：FLU）の真上から地形にレイを当て、<csv>.godot.csv に x,y,z を書いて終了
+##                         （hakoniwa-mujoco-rover の tools/check_terrain.py --godot で MuJoCo・DEM と比べる）
 
 # ロボット同期は hakoniwa_robot_sync（install_addons.ps1 で入れる）を継承するので、箱庭につなぐときだけ読む
 const ROVER_SYNC_PATH := "res://addons/hakoniwa_rover/scripts/rover_sync_controller.gd"
 
 var cfg: Dictionary = {}
-var args := {"offline": false, "shot": "", "shot_after": 10.0, "quit_after": -1.0, "config": "res://config/rover_viewer.json"}
+var args := {"offline": false, "shot": "", "shot_after": 10.0, "quit_after": -1.0, "config": "res://config/rover_viewer.json",
+		"world_visual": "", "terrain_check": ""}
+var terrain: Node3D
+var check_frames := 0
 var t0 := 0.0
 var shot_done := false
 var hako_sim = null
@@ -32,11 +38,16 @@ func _ready() -> void:
 	var mroot := _resolve(str(cfg["mujoco_rover_root"]))
 
 	RoverLunarEnvironment.build(self, cfg)
-	var terrain := Node3D.new()
+	terrain = Node3D.new()
 	terrain.name = "Terrain"
 	add_child(terrain)
-	var n := RoverWorldVisualLoader.build(terrain, mroot.path_join(str(cfg["world_visual"])), float(cfg.get("regolith_albedo", 0.16)))
-	print("[rover_viewer] terrain geoms=%d" % n)
+	var wv: String = args["world_visual"] if args["world_visual"] != "" else mroot.path_join(str(cfg["world_visual"]))
+	var n := RoverWorldVisualLoader.build(terrain, wv, float(cfg.get("regolith_albedo", 0.16)))
+	print("[rover_viewer] terrain geoms=%d (%s)" % [n, wv.get_file()])
+	if args["terrain_check"] != "":
+		for mi in terrain.get_children():
+			(mi as MeshInstance3D).create_trimesh_collision()
+		return
 
 	# ROS（FLU）の世界に置く根：基底 C（ロボット同期はこの下を FLU として扱う）
 	ros_root = Node3D.new()
@@ -76,6 +87,8 @@ func _parse_args() -> void:
 			"--shot-after": i += 1; args["shot_after"] = float(a[i])
 			"--quit-after": i += 1; args["quit_after"] = float(a[i])
 			"--config": i += 1; args["config"] = a[i]
+			"--world-visual": i += 1; args["world_visual"] = a[i]
+			"--terrain-check": i += 1; args["terrain_check"] = a[i]
 		i += 1
 
 
@@ -156,6 +169,34 @@ func _setup_hakoniwa(profile_path: String) -> void:
 	sync.target_root_path = NodePath("../RosToGodot")
 	sync.profile_path = profile_path
 	add_child(sync)
+
+
+func _physics_process(_delta: float) -> void:
+	if args["terrain_check"] == "":
+		return
+	check_frames += 1
+	if check_frames < 3:
+		return
+	# 検査点の真上から下へレイ（FLU → Godot の変換は RoverFrames だけ）
+	var space := get_world_3d().direct_space_state
+	var lines := FileAccess.get_file_as_string(args["terrain_check"]).split("\n", false)
+	var out := FileAccess.open(str(args["terrain_check"]).get_basename() + ".godot.csv", FileAccess.WRITE)
+	out.store_line("x,y,z")
+	var hit := 0
+	for k in range(1, lines.size()):
+		var xy := lines[k].strip_edges().split(",")
+		var x := float(xy[0])
+		var y := float(xy[1])
+		var q := PhysicsRayQueryParameters3D.create(RoverFrames.pos(Vector3(x, y, 5000.0)), RoverFrames.pos(Vector3(x, y, -5000.0)))
+		var r := space.intersect_ray(q)
+		if r.is_empty():
+			continue
+		var flu := RoverFrames.C.inverse() * (r["position"] as Vector3)
+		out.store_line("%s,%s,%.4f" % [xy[0], xy[1], flu.z])
+		hit += 1
+	out.close()
+	print("[rover_viewer] terrain check: %d/%d points -> %s" % [hit, lines.size() - 1, str(args["terrain_check"]).get_basename() + ".godot.csv"])
+	get_tree().quit()
 
 
 func _setup_camera_and_hud() -> void:

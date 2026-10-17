@@ -34,7 +34,9 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\install_addons.ps1
 ```
 
 - GLB・コースの配置表・質量表は **hakoniwa-mujoco-rover から実行時に読む**（このリポジトリには入れない）。場所は `project/config/rover_viewer.json`。
-- 引数：`--offline`（箱庭なし）、`--shot <png> --shot-after <秒>`（画面を保存）、`--quit-after <秒>`。
+- 引数：`--offline`（箱庭なし）、`--shot <png> --shot-after <秒>`（画面を保存）、`--quit-after <秒>`、
+  `--world-visual <json>`（地形の配置表。hakoniwa-mujoco-rover の `run_sim.ps1 -World` が渡す）、
+  `--terrain-check <csv>`（検査点に真上からレイを当てて高さを書き出す。mujoco-rover の `tools/check_terrain.py --godot` で物理・DEM と比べる）。
 
 ## 構成
 
@@ -56,7 +58,7 @@ scripts/windows/                   build_addon.ps1・install_addons.ps1・config
 |---|---|
 | `frames.gd` | 座標変換を 1 か所に（FLU → Godot：(x, y, z) → (−y, z, −x)） |
 | `lunar_environment.gd` | 黒い空・環境光ほぼ 0・霧なし・太陽を方位と高度で置く・視直径 0.53° の影 |
-| `world_visual_loader.gd` | hakoniwa-mujoco-rover の `tools/export_world_visual.py` の配置表から地形・岩を組む（**物理と同じ配置**） |
+| `world_visual_loader.gd` | hakoniwa-mujoco-rover の `tools/export_world_visual.py` の配置表から地形・岩を組む（**物理と同じ配置**）。DEM の HField は MuJoCo が使う高さそのものから三角形のメッシュを作る（物理との差 1 mm 以下を確認） |
 | `rover_sync_controller.gd` | `hakoniwa_robot_sync` を継承し、直動関節（懸架の上下）の反映を足したもの |
 
 - 関節の対応表（robot_sync の profile）は、GLB のノード名（`susp_*`・`steer_*`・`wheel_*`）から実行時に作る。
@@ -68,7 +70,7 @@ scripts/windows/                   build_addon.ps1・install_addons.ps1・config
 | 項目 | 内容 |
 |---|---|
 | 照り返し・カメラ | 間接光・カメラモデルは主ビューア（Unreal）で。ここは軽量のまま |
-| 地形 | DEM のタイル（ROV-16）を同じ配置表の形で読めるようにする |
+| 地形 | DEM の 1 タイルは読める（ROV-16）。車両まわりのタイル切替・岩のインスタンス配置 |
 | CI | `--offline --shot` で絵の回帰（ヘッドレスでは描画されないので窓ありで撮る） |
 
 ## ライセンス
