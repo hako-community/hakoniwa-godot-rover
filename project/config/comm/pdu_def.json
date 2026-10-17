@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "lunarcruiser-endpoint",
+      "path": "pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "LunarCruiser",
+      "pdutypes_id": "lunarcruiser-endpoint"
+    }
+  ]
+}

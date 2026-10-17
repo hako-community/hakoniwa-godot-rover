@@ -1,0 +1,18 @@
+{
+  "protocol": "shm",
+  "impl_type": "poll",
+  "asset_name": "RoverViewer",
+  "name": "hakoniwa_shared_memory",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "LunarCruiser",
+        "pdu": [
+          { "name": "base_link_pos", "notify_on_recv": false },
+          { "name": "joint_state", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
+}

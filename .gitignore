@@ -6,3 +6,5 @@ project/addons/hakoniwa_msgs/
 project/addons/hakoniwa_robot_sync/
 # 各自の PC 用の場所の設定
 scripts/windows/config.local.ps1
+# ビルドの作業場所（scripts/windows/build_addon.ps1）
+build/
