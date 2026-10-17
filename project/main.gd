@@ -263,7 +263,7 @@ func _update_hud_and_shot(delta: float, p: Vector3) -> void:
 	var flu := RoverFrames.C.inverse() * p
 	var st := "offline" if args["offline"] else ("running" if hako_sim != null and hako_sim.get_state() >= 0 else "-")
 	var simt: float = (hako_sim.get_simtime_usec() / 1e6) if hako_sim != null else 0.0
-	hud.text = "Lunar rover (PoC)  sim %.1f s  [%s]\nx %.2f  y %.2f  z %.2f m   speed %.2f m/s" % [simt, st, flu.x, flu.y, flu.z, speed]
+	hud.text = "Rover  sim %.1f s  [%s]\nx %.2f  y %.2f  z %.2f m   speed %.2f m/s" % [simt, st, flu.x, flu.y, flu.z, speed]
 
 	var t := Time.get_ticks_msec() / 1000.0 - t0
 	if args["shot"] != "" and not shot_done and t > float(args["shot_after"]):
