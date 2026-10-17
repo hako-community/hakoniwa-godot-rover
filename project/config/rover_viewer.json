@@ -4,10 +4,10 @@
     "GLB・コースの配置表・質量表（車体の原点の高さ）は hakoniwa-mujoco-rover から読む（このリポジトリには入れない）。"
   ],
   "mujoco_rover_root": "../../hakoniwa-mujoco-rover",
-  "body_glb": "bodies/lunar_cruiser/source/lunar_cruiser.glb",
-  "body_mass_json": "bodies/lunar_cruiser/config/mass.json",
+  "body_glb": "bodies/lunar_rover/source/lunar_rover.glb",
+  "body_mass_json": "bodies/lunar_rover/config/mass.json",
   "world_visual": "models/worlds/moon_test_course.visual.json",
-  "robot_name": "LunarCruiser",
+  "robot_name": "LunarRover",
   "base_link_pdu_name": "base_link_pos",
   "joint_states_pdu_name": "joint_state",
   "asset_name": "RoverViewer",
