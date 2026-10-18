@@ -3,6 +3,9 @@ extends RefCounted
 ## 物理の MJCF から書き出した配置表（hakoniwa-mujoco-rover の tools/export_world_visual.py）で地形・岩を組む。
 ## ★ 物理と絵で同じ配置表を使う（検討書 R12）。ここで形を足したり動かしたりしない。
 
+const ROCK_CELL_M := 100.0   # 岩の MultiMesh の区画の大きさ（FLU の x, y）
+const ROCK_DRAW_M := 400.0   # これより遠い岩は描かない（Unreal の HISM の打ち切りと同じ）
+
 static func build(parent: Node3D, json_path: String, albedo: float) -> int:
 	var f := FileAccess.open(json_path, FileAccess.READ)
 	if f == null:
@@ -70,36 +73,46 @@ static func rock_mesh(src: Dictionary) -> ArrayMesh:
 
 
 static func _build_rocks(parent: Node3D, path: String, mat: Material) -> int:
-	## 岩（hakoniwa-simenv-data の src/lunar_terrain/rock_field.py の配置表）。物理は車両の近くだけ持つが、絵は全部描く。
-	## メッシュの種類ごとに MultiMesh 1 つ
+	## 岩（hakoniwa-simenv-data の src/lunar_terrain/rock_field.py の配置表）。物理は車両の近くだけ持つ。
+	## 絵は ROCK_CELL_M 四方の区画 × メッシュの種類ごとに MultiMesh 1 つにし、ROCK_DRAW_M より遠い区画は描かない（Unreal と同じ 400 m）。
+	## ★ 1 つの MultiMesh に全部入れると、視野の外も遠くも 27,904 個を影まで描き、岩を細かくした（K48）後は Godot だけで 17 fps に
+	##   落ちた。GPU を使い切った Godot が前面にあると、背面の Unreal が数 fps になった（K55）
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		push_error("[rover] 岩の配置表を開けません: %s" % path)
 		return 0
 	var doc = JSON.parse_string(f.get_as_text())
 	var meshes: Array = doc["meshes"]
-	var groups := []
+	var mesh_objs := []
 	for i in meshes.size():
-		groups.append([])
+		mesh_objs.append(rock_mesh(meshes[i]))
+	var groups := {}   # Vector3i(区画 x, 区画 y, 種類) → 岩
 	for r in doc["rocks"]:
-		groups[int(r[10])].append(r)
+		var key := Vector3i(floori(float(r[0]) / ROCK_CELL_M), floori(float(r[1]) / ROCK_CELL_M), int(r[10]))
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(r)
 	var root := Node3D.new()
 	root.name = "Rocks"
 	parent.add_child(root)
-	for i in meshes.size():
+	for key in groups:
+		var rocks: Array = groups[key]
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = rock_mesh(meshes[i])
-		mm.instance_count = groups[i].size()
-		for k in groups[i].size():
-			mm.set_instance_transform(k, rock_transform(groups[i][k]))
+		mm.mesh = mesh_objs[key.z]
+		mm.instance_count = rocks.size()
+		for k in rocks.size():
+			mm.set_instance_transform(k, rock_transform(rocks[k]))
 		var mmi := MultiMeshInstance3D.new()
-		mmi.name = "Rocks_%d" % i
+		mmi.name = "Rocks_%d_%d_%d" % [key.x, key.y, key.z]
 		mmi.multimesh = mm
 		mmi.material_override = mat
+		# 可視距離は区画の中心から測るので、区画の半径の分だけ延ばす
+		mmi.visibility_range_end = ROCK_DRAW_M + ROCK_CELL_M * 0.71
 		root.add_child(mmi)
 	root.set_meta("rocks_doc", doc)
-	print("[rover] rocks: %d (%d meshes) from %s" % [doc["rocks"].size(), meshes.size(), path.get_file()])
+	print("[rover] rocks: %d (%d meshes, %d cells of %.0f m, drawn within %.0f m) from %s" % [
+		doc["rocks"].size(), meshes.size(), groups.size(), ROCK_CELL_M, ROCK_DRAW_M, path.get_file()])
 	return doc["rocks"].size()
 
 
