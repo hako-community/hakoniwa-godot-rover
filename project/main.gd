@@ -55,6 +55,16 @@ func _ready() -> void:
 		for mi in terrain.get_children():
 			if mi is MeshInstance3D:
 				(mi as MeshInstance3D).create_trimesh_collision()
+			elif mi is RoverTerrainChunks:
+				# 細かい地形：検査点のある区画を細かいメッシュにして、その形に当たり判定を付ける（描く形そのものを測る）
+				var tc := mi as RoverTerrainChunks
+				var keys := {}
+				for p in pts:
+					keys[tc.chunk_of(p)] = true
+				for key in keys:
+					tc.ensure_fine(key).create_trimesh_collision()
+				tc.set_process(false)
+				print("[rover_viewer] terrain check: fine chunks=%d" % keys.size())
 		# 岩は MultiMesh なので、検査点の近くの岩だけ絵と同じ形の当たり判定を付ける
 		var nr := RoverWorldVisualLoader.add_rock_collisions(terrain, pts, 3.0)
 		print("[rover_viewer] terrain check: rock collisions=%d" % nr)

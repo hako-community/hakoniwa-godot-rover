@@ -62,6 +62,7 @@ scripts/windows/                   build_addon.ps1・install_addons.ps1・config
 | `lunar_environment.gd` | 黒い空・環境光ほぼ 0・霧なし・太陽を方位と高度で置く・視直径 0.53° の影 |
 | `world_visual_loader.gd` | hakoniwa-mujoco-rover の `tools/export_world_visual.py` の配置表から地形・岩を組む（**物理と同じ配置**）。DEM の HField は MuJoCo が使う高さそのものから三角形のメッシュを作る（物理との差 1 mm 以下を確認） |
 | `rover_sync_controller.gd` | `hakoniwa_robot_sync` を継承し、直動関節（懸架の上下）の反映を足したもの |
+| `terrain_chunks.gd` | 小クレータのある細かい地形（0.5 m 格子）：地形を 50 m の区画に分け、カメラの 150 m 以内だけ細かい格子のメッシュ（物理と同じ三角形）、それより遠くは 5 m の地面を描く。細かい格子を全部メッシュにすると重すぎるため |
 | `rover_hako_asset.gd` | hakoniwa-godot の `hakoniwa_simulation_node.gd` を継承し、時刻の扱いを hakoniwa-godot-drone の `HakoAsset` と同じにしたもの（物理のフレームを 1 ms ずつ刻み、刻みごとに世界の時刻を heartbeat として報告してから 1 ms 進める）。描画が遅れても自分の時刻が世界の時刻から遅れ続けず、PLANT を待たせない |
 
 - 関節の対応表（robot_sync の profile）は、GLB のノード名（`susp_*`・`steer_*`・`wheel_*`）から実行時に作る。

@@ -15,7 +15,18 @@ static func build(parent: Node3D, json_path: String, albedo: float) -> int:
 	var soil := RoverLunarEnvironment.regolith_material(albedo)
 	var rock := RoverLunarEnvironment.regolith_material(albedo * 0.7)
 	var n := 0
+	var fine: Dictionary = doc.get("fine", {})
 	for g in doc.get("geoms", []):
+		# 小クレータのある細かい格子があれば、それが置き換える 5 m の地面は区画に分けて近くだけ細かく描く（ROV-28）
+		if not fine.is_empty() and str(g["type"]) == "hfield" and int(g.get("group", 1)) == int(fine.get("replaces_group", 3)):
+			var tc := RoverTerrainChunks.new()
+			tc.name = "TerrainChunks"
+			var base := json_path.get_base_dir()
+			if tc.setup(base.path_join(str(g["hfield"]["file"])), g["hfield"]["size"], float(g["pos"][2]),
+					base.path_join(str(fine["file"])), fine, soil):
+				parent.add_child(tc)
+				n += 1
+			continue
 		var mi := MeshInstance3D.new()
 		mi.name = str(g["name"])
 		var s: Array = g["size"]
