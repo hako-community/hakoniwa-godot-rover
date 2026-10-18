@@ -37,6 +37,112 @@ static func build(parent: Node3D, json_path: String, albedo: float) -> int:
 		mi.transform = Transform3D(RoverFrames.basis(g["mat"]), RoverFrames.pos(Vector3(p[0], p[1], p[2])))
 		parent.add_child(mi)
 		n += 1
+	if doc.has("rocks"):
+		n += _build_rocks(parent, json_path.get_base_dir().path_join(str(doc["rocks"]["file"])), rock)
+	return n
+
+
+static func rock_transform(r: Array) -> Transform3D:
+	## 配置表の 1 行（x y z a b c qw qx qy qz …、FLU）→ Godot の変換（単位球のメッシュを楕円体へ）
+	var q := Quaternion(float(r[7]), float(r[8]), float(r[9]), float(r[6]))   # Godot の Quaternion は (x, y, z, w)
+	var m := Basis(q) * Basis.from_scale(Vector3(float(r[3]), float(r[4]), float(r[5])))
+	return Transform3D(RoverFrames.C * m * RoverFrames.C.inverse(), RoverFrames.pos(Vector3(float(r[0]), float(r[1]), float(r[2]))))
+
+
+static func rock_mesh(src: Dictionary) -> ArrayMesh:
+	## 配置表の meshes の 1 つ（FLU の単位球の内側）→ Godot のメッシュ。表の向きは外向きにそろえる
+	var v: Array = src["vertices"]
+	var t: Array = src["triangles"]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for k in range(0, t.size(), 3):
+		var p := []
+		for j in 3:
+			var i := int(t[k + j])
+			p.append(RoverFrames.pos(Vector3(float(v[3 * i]), float(v[3 * i + 1]), float(v[3 * i + 2]))))
+		# Godot は時計回り（外から見て）が表：外向きの法線になる並びの逆順で入れる
+		if (p[1] - p[0]).cross(p[2] - p[0]).dot(p[0]) > 0.0:
+			p = [p[0], p[2], p[1]]
+		for j in 3:
+			st.add_vertex(p[j])
+	st.generate_normals()
+	return st.commit()
+
+
+static func _build_rocks(parent: Node3D, path: String, mat: Material) -> int:
+	## 岩（hakoniwa-mujoco-rover の tools/rock_field.py の配置表）。物理は車両の近くだけ持つが、絵は全部描く。
+	## メッシュの種類ごとに MultiMesh 1 つ
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		push_error("[rover] 岩の配置表を開けません: %s" % path)
+		return 0
+	var doc = JSON.parse_string(f.get_as_text())
+	var meshes: Array = doc["meshes"]
+	var groups := []
+	for i in meshes.size():
+		groups.append([])
+	for r in doc["rocks"]:
+		groups[int(r[10])].append(r)
+	var root := Node3D.new()
+	root.name = "Rocks"
+	parent.add_child(root)
+	for i in meshes.size():
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = rock_mesh(meshes[i])
+		mm.instance_count = groups[i].size()
+		for k in groups[i].size():
+			mm.set_instance_transform(k, rock_transform(groups[i][k]))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = "Rocks_%d" % i
+		mmi.multimesh = mm
+		mmi.material_override = mat
+		root.add_child(mmi)
+	root.set_meta("rocks_doc", doc)
+	print("[rover] rocks: %d (%d meshes) from %s" % [doc["rocks"].size(), meshes.size(), path.get_file()])
+	return doc["rocks"].size()
+
+
+static func add_rock_collisions(parent: Node3D, points: Array, reach: float) -> int:
+	## 検査用：検査点（FLU の x, y）から reach [m] 以内に中心がある岩に、絵と同じ形の当たり判定を付ける
+	var root := parent.get_node_or_null("Rocks")
+	if root == null:
+		return 0
+	var doc: Dictionary = root.get_meta("rocks_doc")
+	var cell := {}
+	for p in points:
+		var key := Vector2i(floori(p.x / reach), floori(p.y / reach))
+		if not cell.has(key):
+			cell[key] = []
+		cell[key].append(p)
+	var faces := {}
+	var n := 0
+	for r in doc["rocks"]:
+		var c := Vector2(float(r[0]), float(r[1]))
+		var key := Vector2i(floori(c.x / reach), floori(c.y / reach))
+		var near := false
+		for dx in [-1, 0, 1]:
+			for dy in [-1, 0, 1]:
+				for p in cell.get(key + Vector2i(dx, dy), []):
+					if c.distance_to(p) <= reach:
+						near = true
+		if not near:
+			continue
+		var vi := int(r[10])
+		if not faces.has(vi):
+			faces[vi] = rock_mesh(doc["meshes"][vi]).get_faces()
+		var xf := rock_transform(r)
+		var baked := PackedVector3Array()
+		for v in faces[vi]:
+			baked.append(xf * v)
+		var shape := ConcavePolygonShape3D.new()
+		shape.set_faces(baked)
+		var body := StaticBody3D.new()
+		var cs := CollisionShape3D.new()
+		cs.shape = shape
+		body.add_child(cs)
+		root.add_child(body)
+		n += 1
 	return n
 
 

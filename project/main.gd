@@ -48,8 +48,16 @@ func _ready() -> void:
 	var n := RoverWorldVisualLoader.build(terrain, wv, float(cfg.get("regolith_albedo", 0.16)))
 	print("[rover_viewer] terrain geoms=%d (%s)" % [n, wv.get_file()])
 	if args["terrain_check"] != "":
+		var pts := []
+		for line in FileAccess.get_file_as_string(args["terrain_check"]).split("\n", false).slice(1):
+			var xy := line.strip_edges().split(",")
+			pts.append(Vector2(float(xy[0]), float(xy[1])))
 		for mi in terrain.get_children():
-			(mi as MeshInstance3D).create_trimesh_collision()
+			if mi is MeshInstance3D:
+				(mi as MeshInstance3D).create_trimesh_collision()
+		# 岩は MultiMesh なので、検査点の近くの岩だけ絵と同じ形の当たり判定を付ける
+		var nr := RoverWorldVisualLoader.add_rock_collisions(terrain, pts, 3.0)
+		print("[rover_viewer] terrain check: rock collisions=%d" % nr)
 		return
 
 	# ROS（FLU）の世界に置く根：基底 C（ロボット同期はこの下を FLU として扱う）
