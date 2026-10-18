@@ -165,13 +165,13 @@ func _setup_hakoniwa(profile_path: String) -> void:
 	codec.codec_manifest_path = "res://addons/hakoniwa/codec_manifest.json"
 	codec.load_on_ready = true
 	add_child(codec)
-	hako_sim = load("res://addons/hakoniwa/scripts/hakoniwa_simulation_node.gd").new()
+	# 時刻の扱いは hakoniwa-godot-drone の HakoAsset と同じ（1 ms 刻み・世界の時刻の heartbeat。K53）
+	hako_sim = load("res://addons/hakoniwa_rover/scripts/rover_hako_asset.gd").new()
 	hako_sim.name = "HakoniwaSimNode"
 	hako_sim.asset_name = str(cfg.get("asset_name", "RoverViewer"))
 	hako_sim.use_internal_shm_endpoint = true
 	hako_sim.shm_endpoint_config_path = "res://config/endpoint_shm.json"
 	hako_sim.codec_node_path = NodePath("../HakoniwaCodecNode")
-	hako_sim.delta_time_usec = int(cfg.get("delta_time_usec", 20000))
 	hako_sim.auto_initialize_on_ready = true
 	hako_sim.simulation_ready.connect(func(): print("[rover_viewer] registered. waiting for 'hako-cmd start'"))
 	hako_sim.simulation_started.connect(func(): print("[rover_viewer] hakoniwa started"))

@@ -11,7 +11,6 @@
   "base_link_pdu_name": "base_link_pos",
   "joint_states_pdu_name": "joint_state",
   "asset_name": "RoverViewer",
-  "delta_time_usec": 20000,
   "sun": { "azimuth_deg": 150.0, "elevation_deg": 8.0, "energy": 2.2, "angular_diameter_deg": 0.53 },
   "ambient_energy": 0.03,
   "regolith_albedo": 0.16
