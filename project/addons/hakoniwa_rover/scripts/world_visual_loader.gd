@@ -70,7 +70,7 @@ static func rock_mesh(src: Dictionary) -> ArrayMesh:
 
 
 static func _build_rocks(parent: Node3D, path: String, mat: Material) -> int:
-	## 岩（hakoniwa-mujoco-rover の tools/rock_field.py の配置表）。物理は車両の近くだけ持つが、絵は全部描く。
+	## 岩（hakoniwa-simenv-data の src/lunar_terrain/rock_field.py の配置表）。物理は車両の近くだけ持つが、絵は全部描く。
 	## メッシュの種類ごとに MultiMesh 1 つ
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
